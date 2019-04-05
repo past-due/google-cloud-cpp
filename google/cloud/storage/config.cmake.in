@@ -13,7 +13,10 @@
 # limitations under the License.
 
 include(CMakeFindDependencyMacro)
-find_dependency(CURL)
+find_package(CURL CONFIG QUIET) # Attempt to find CURL using CONFIG mode (quietly)
+if(NOT CURL_FOUND)
+    find_dependency(CURL MODULE) # CONFIG mode failed - fallback to MODULE mode
+endif()
 find_dependency(Crc32c)
 find_dependency(google_cloud_cpp_common)
 

@@ -37,11 +37,17 @@ set_property(CACHE GOOGLE_CLOUD_CPP_CURL_PROVIDER
 if ("${GOOGLE_CLOUD_CPP_CURL_PROVIDER}" STREQUAL "external")
     include(external/curl)
 elseif("${GOOGLE_CLOUD_CPP_CURL_PROVIDER}" STREQUAL "package")
-    # Search for libcurl, in CMake 3.5 this does not define a target, but it
-    # will in 3.12 (see https://cmake.org/cmake/help/git-
-    # stage/module/FindCURL.html for details).  Until then, define the target
-    # ourselves if it is missing.
-    find_package(CURL REQUIRED)
+    # Search for libcurl, first using CONFIG mode, and retrying
+    # using MODULE mode if that fails
+    find_package(CURL CONFIG QUIET) # Attempt to find CURL using CONFIG mode (quietly)
+    if(NOT CURL_FOUND)
+        # CONFIG mode failed - fallback to MODULE mode
+        # In CMake 3.5 this does not define a target, but it
+        # will in 3.12 (see https://cmake.org/cmake/help/git-
+        # stage/module/FindCURL.html for details).  Until then, define the target
+        # ourselves if it is missing.
+        find_package(CURL MODULE REQUIRED) # Use REQUIRED the second time to fail out
+    endif()
     if (NOT TARGET CURL::libcurl)
         add_library(CURL::libcurl UNKNOWN IMPORTED)
         set_property(TARGET CURL::libcurl
