@@ -216,7 +216,7 @@ target_link_libraries(storage_client
                       PUBLIC google_cloud_cpp_common
                              nlohmann_json
                              Crc32c::crc32c
-                             CURL::CURL
+                             CURL::libcurl
                              Threads::Threads
                              OpenSSL::SSL
                              OpenSSL::Crypto
@@ -377,7 +377,7 @@ if (BUILD_TESTING)
                                           GTest::gmock_main
                                           GTest::gmock
                                           GTest::gtest
-                                          CURL::CURL
+                                          CURL::libcurl
                                           storage_common_options
                                           nlohmann_json)
             if (MSVC)
