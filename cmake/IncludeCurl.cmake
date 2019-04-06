@@ -34,49 +34,57 @@ set_property(CACHE GOOGLE_CLOUD_CPP_CURL_PROVIDER
 if ("${GOOGLE_CLOUD_CPP_CURL_PROVIDER}" STREQUAL "external")
     include(external/curl)
 elseif("${GOOGLE_CLOUD_CPP_CURL_PROVIDER}" STREQUAL "package")
-    # Search for libcurl, in CMake 3.5 this does not define a target, but it
-    # will in 3.12 (see https://cmake.org/cmake/help/git-
-    # stage/module/FindCURL.html for details).  Until then, define the target
-    # ourselves if it is missing.
-    find_package(CURL REQUIRED)
-    if (NOT TARGET CURL::libcurl)
-        add_library(CURL::libcurl UNKNOWN IMPORTED)
-        set_property(TARGET CURL::libcurl
-                     APPEND
-                     PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-                              "${CURL_INCLUDE_DIR}")
-        set_property(TARGET CURL::libcurl
-                     APPEND
-                     PROPERTY IMPORTED_LOCATION "${CURL_LIBRARY}")
-    endif ()
-    # If the library is static, we need to explicitly link its dependencies.
-    # However, we should not do so for shared libraries, because the version of
-    # OpenSSL (for example) found by find_package() may be newer than the
-    # version linked against libcurl.
-    if ("${CURL_LIBRARY}" MATCHES "${CMAKE_STATIC_LIBRARY_SUFFIX}$")
-        find_package(OpenSSL REQUIRED)
-        find_package(ZLIB REQUIRED)
-        set_property(TARGET CURL::libcurl
-                     APPEND
-                     PROPERTY INTERFACE_LINK_LIBRARIES
-                              OpenSSL::SSL
-                              OpenSSL::Crypto
-                              ZLIB::ZLIB)
-        message(STATUS "CURL linkage will be static")
-        if (WIN32)
+    # Search for libcurl, first using CONFIG mode, and retrying
+    # using MODULE mode if that fails
+    find_package(CURL CONFIG QUIET) # Deliberately quiet, so we can handle the result
+    if(CURL_FOUND)
+        message(STATUS "CURL library found via CONFIG mode")
+    else()
+        # CONFIG mode failed - fallback to MODULE mode
+        # In CMake 3.5 this does not define a target, but it
+        # will in 3.12 (see https://cmake.org/cmake/help/git-
+        # stage/module/FindCURL.html for details).  Until then, define the target
+        # ourselves if it is missing.
+        find_package(CURL MODULE REQUIRED) # Use REQUIRED the second time to fail out
+        if (NOT TARGET CURL::libcurl)
+            add_library(CURL::libcurl UNKNOWN IMPORTED)
+            set_property(TARGET CURL::libcurl
+                         APPEND
+                         PROPERTY INTERFACE_INCLUDE_DIRECTORIES
+                                  "${CURL_INCLUDE_DIR}")
+            set_property(TARGET CURL::libcurl
+                         APPEND
+                         PROPERTY IMPORTED_LOCATION "${CURL_LIBRARY}")
+        endif ()
+        # If the library is static, we need to explicitly link its dependencies.
+        # However, we should not do so for shared libraries, because the version of
+        # OpenSSL (for example) found by find_package() may be newer than the
+        # version linked against libcurl.
+        if ("${CURL_LIBRARY}" MATCHES "${CMAKE_STATIC_LIBRARY_SUFFIX}$")
+            find_package(OpenSSL REQUIRED)
+            find_package(ZLIB REQUIRED)
             set_property(TARGET CURL::libcurl
                          APPEND
                          PROPERTY INTERFACE_LINK_LIBRARIES
-                                  crypt32
-                                  wsock32
-                                  ws2_32)
+                                  OpenSSL::SSL
+                                  OpenSSL::Crypto
+                                  ZLIB::ZLIB)
+            message(STATUS "CURL linkage will be static")
+            if (WIN32)
+                set_property(TARGET CURL::libcurl
+                             APPEND
+                             PROPERTY INTERFACE_LINK_LIBRARIES
+                                      crypt32
+                                      wsock32
+                                      ws2_32)
+            endif ()
+            if (APPLE)
+                set_property(TARGET CURL::libcurl
+                             APPEND
+                             PROPERTY INTERFACE_LINK_LIBRARIES ldap)
+            endif ()
+        else()
+            message(STATUS "CURL linkage will be non-static")
         endif ()
-        if (APPLE)
-            set_property(TARGET CURL::libcurl
-                         APPEND
-                         PROPERTY INTERFACE_LINK_LIBRARIES ldap)
-        endif ()
-    else()
-        message(STATUS "CURL linkage will be non-static")
     endif ()
 endif ()

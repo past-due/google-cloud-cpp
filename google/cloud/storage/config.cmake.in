@@ -13,21 +13,25 @@
 # limitations under the License.
 
 include(CMakeFindDependencyMacro)
-find_dependency(CURL)
+# Search for libcurl, first using CONFIG mode, and retrying
+# using MODULE mode if that fails
+find_package(CURL CONFIG QUIET) # find_package so we can explicitly specify QUIET
+if(NOT CURL_FOUND)
+    find_dependency(CURL MODULE)
+    # Some versions of FindCURL do not define CURL::libcurl, so we define it ourselves.
+    if (NOT TARGET CURL::libcurl)
+        add_library(CURL::libcurl UNKNOWN IMPORTED)
+        set_property(TARGET CURL::libcurl
+                     APPEND
+                     PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CURL_INCLUDE_DIR}")
+        set_property(TARGET CURL::libcurl
+                     APPEND
+                     PROPERTY IMPORTED_LOCATION "${CURL_LIBRARY}")
+    endif ()
+endif()
 find_dependency(Crc32c)
 find_dependency(google_cloud_cpp_common)
 find_dependency(OpenSSL)
 find_dependency(ZLIB)
-
-# Some versions of FindCURL do not define CURL::libcurl, so we define it ourselves.
-if (NOT TARGET CURL::libcurl)
-    add_library(CURL::libcurl UNKNOWN IMPORTED)
-    set_property(TARGET CURL::libcurl
-                 APPEND
-                 PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CURL_INCLUDE_DIR}")
-    set_property(TARGET CURL::libcurl
-                 APPEND
-                 PROPERTY IMPORTED_LOCATION "${CURL_LIBRARY}")
-endif ()
 
 include("${CMAKE_CURRENT_LIST_DIR}/storage-targets.cmake")
